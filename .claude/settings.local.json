@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(find server/src -maxdepth 3 -type d)",
+      "Bash(find server/src -maxdepth 2 -type f)"
+    ]
+  }
+}
