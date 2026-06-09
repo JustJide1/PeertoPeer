@@ -178,17 +178,25 @@ function Navbar() {
           </div>
         </div>
 
-        <div className="hidden items-center gap-8 md:flex">
+        <div className="hidden items-center gap-6 md:flex">
           {NAV_LINKS.map((link) => (
             <NavAnchor key={link.id} id={link.id} label={link.label} />
           ))}
 
-          <Link
-            to="/login"
-            className="rounded-lg border border-blue-900 px-5 py-2 text-blue-900 transition-colors hover:bg-blue-900 hover:text-white"
-          >
-            Login
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/login"
+              className="rounded-lg border border-blue-900 px-4 py-2 text-sm text-blue-900 transition-colors hover:bg-blue-900 hover:text-white"
+            >
+              Student Login
+            </Link>
+            <Link
+              to="/lecturer/login"
+              className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-700 hover:text-white"
+            >
+              Lecturer Login
+            </Link>
+          </div>
           <Link
             to="/register"
             className="rounded-lg bg-blue-900 px-5 py-2 text-white transition-colors hover:bg-blue-800"
@@ -220,7 +228,14 @@ function Navbar() {
                 onClick={() => setIsMenuOpen(false)}
                 className="rounded-lg border border-blue-900 px-5 py-2 text-center text-blue-900 transition-colors hover:bg-blue-900 hover:text-white"
               >
-                Login
+                Student Login
+              </Link>
+              <Link
+                to="/lecturer/login"
+                onClick={() => setIsMenuOpen(false)}
+                className="rounded-lg border border-slate-600 px-5 py-2 text-center text-slate-700 transition-colors hover:bg-slate-700 hover:text-white"
+              >
+                Lecturer Login
               </Link>
               <Link
                 to="/register"
@@ -463,7 +478,12 @@ function Footer() {
             ))}
             <li>
               <Link to="/login" className="transition-colors hover:text-white">
-                Login
+                Student Login
+              </Link>
+            </li>
+            <li>
+              <Link to="/lecturer/login" className="transition-colors hover:text-white">
+                Lecturer Login
               </Link>
             </li>
             <li>

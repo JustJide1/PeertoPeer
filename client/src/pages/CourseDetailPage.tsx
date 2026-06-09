@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import ResourceCard from '../components/ResourceCard';
 import ResourceUploadModal from '../components/ResourceUploadModal';
 import Spinner from '../components/Spinner';
@@ -13,14 +13,17 @@ import {
   deleteResource,
   downloadResource,
   fetchCourse,
+  fetchCourseStudents,
+  removeStudentFromCourse,
   fetchForumsForCourse,
   fetchResourcesForCourse,
   type CourseDetail,
+  type CourseStudent,
   type Forum,
   type Resource,
 } from '../lib/coursesApi';
 
-type Tab = 'forums' | 'resources';
+type Tab = 'forums' | 'resources' | 'students';
 
 function NewForumForm({
   onCreate,
@@ -167,7 +170,18 @@ export default function CourseDetailPage() {
     course ? [{ label: 'Courses', to: '/courses' }, { label: course.code }] : null,
   );
 
-  const [activeTab, setActiveTab] = useState<Tab>('forums');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const tab = searchParams.get('tab');
+    return tab === 'resources' || tab === 'forums' || tab === 'students' ? tab : 'forums';
+  });
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'resources' || tab === 'forums' || tab === 'students') {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   const [forums, setForums] = useState<Forum[] | null>(null);
   const [forumsError, setForumsError] = useState<string | null>(null);
@@ -180,6 +194,11 @@ export default function CourseDetailPage() {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const [students, setStudents] = useState<CourseStudent[] | null>(null);
+  const [studentsError, setStudentsError] = useState<string | null>(null);
+  const [removingStudentId, setRemovingStudentId] = useState<string | null>(null);
+  const [removeStudentError, setRemoveStudentError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -237,6 +256,24 @@ export default function CourseDetailPage() {
     };
   }, [id, activeTab, resources]);
 
+  useEffect(() => {
+    if (!id || activeTab !== 'students' || students !== null) return;
+    let cancelled = false;
+    setStudentsError(null);
+
+    fetchCourseStudents(id)
+      .then((data) => {
+        if (!cancelled) setStudents(data);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setStudentsError(getErrorMessage(err, 'Could not load students for this course.'));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, activeTab, students]);
+
   if (!id) {
     return null;
   }
@@ -277,6 +314,20 @@ export default function CourseDetailPage() {
       setDeleteError(getErrorMessage(err, 'Could not delete this resource.'));
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function handleRemoveStudent(studentId: string) {
+    if (removingStudentId) return;
+    setRemoveStudentError(null);
+    setRemovingStudentId(studentId);
+    try {
+      await removeStudentFromCourse(id!, studentId);
+      setStudents((prev) => prev?.filter((s) => s.id !== studentId) ?? null);
+    } catch (err) {
+      setRemoveStudentError(getErrorMessage(err, 'Could not remove this student.'));
+    } finally {
+      setRemovingStudentId(null);
     }
   }
 
@@ -321,7 +372,10 @@ export default function CourseDetailPage() {
 
           <div className="mt-6 border-b border-gray-200">
             <nav className="-mb-px flex gap-6">
-              {(['forums', 'resources'] as const).map((tab) => (
+              {(isLecturerOfCourse
+                ? (['forums', 'resources', 'students'] as const)
+                : (['forums', 'resources'] as const)
+              ).map((tab) => (
                 <button
                   key={tab}
                   type="button"
@@ -373,6 +427,80 @@ export default function CourseDetailPage() {
                 <ul className="mt-4 space-y-3">
                   {forums.map((forum) => (
                     <ForumRow key={forum.id} forum={forum} />
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          )}
+
+          {activeTab === 'students' && (
+            <div className="mt-6">
+              <h2 className="text-lg font-semibold text-blue-950">
+                {students !== null ? `${students.length} student${students.length === 1 ? '' : 's'} enrolled` : 'Enrolled Students'}
+              </h2>
+
+              {studentsError && (
+                <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+                  {studentsError}
+                </p>
+              )}
+
+              {removeStudentError && (
+                <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+                  {removeStudentError}
+                </p>
+              )}
+
+              {students === null && !studentsError ? (
+                <ul className="mt-4 space-y-2">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <li key={index} className="flex animate-pulse items-center justify-between rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                      <div className="space-y-2">
+                        <div className="h-3 w-32 rounded bg-gray-200" />
+                        <div className="h-3 w-48 rounded bg-gray-200" />
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="h-7 w-20 rounded bg-gray-200" />
+                        <div className="h-7 w-16 rounded bg-gray-200" />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : students && students.length === 0 ? (
+                <p className="mt-4 text-sm text-gray-500">No students are enrolled in this course yet.</p>
+              ) : students ? (
+                <ul className="mt-4 space-y-2">
+                  {students.map((student) => (
+                    <li
+                      key={student.id}
+                      className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-blue-950">{student.name}</p>
+                        <p className="mt-0.5 truncate text-xs text-gray-500">{student.email}</p>
+                        {student.level && (
+                          <span className="mt-1 inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                            {student.level}
+                          </span>
+                        )}
+                      </div>
+                      <div className="ml-4 flex flex-none gap-2">
+                        <Link
+                          to={`/profile/${student.id}`}
+                          className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                        >
+                          View Profile
+                        </Link>
+                        <button
+                          type="button"
+                          disabled={removingStudentId === student.id}
+                          onClick={() => handleRemoveStudent(student.id)}
+                          className="rounded-md bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {removingStudentId === student.id ? 'Removing…' : 'Remove'}
+                        </button>
+                      </div>
+                    </li>
                   ))}
                 </ul>
               ) : null}

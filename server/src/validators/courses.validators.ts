@@ -18,3 +18,8 @@ export const updateCourseValidators = [
 ];
 
 export const courseIdParamValidators = [param('id').isUUID().withMessage('Invalid course id')];
+
+export const removeStudentValidators = [
+  param('id').isUUID().withMessage('Invalid course id'),
+  param('userId').isUUID().withMessage('Invalid user id'),
+];

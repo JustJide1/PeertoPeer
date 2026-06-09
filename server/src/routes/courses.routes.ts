@@ -4,7 +4,10 @@ import {
   createCourse,
   enrollInCourse,
   getCourse,
+  getCourseEnrollments,
+  getCourseStudents,
   listCourses,
+  removeStudentFromCourse,
   unenrollFromCourse,
   updateCourse,
 } from '../controllers/courses.controller';
@@ -15,6 +18,7 @@ import {
   courseIdParamValidators,
   createCourseValidators,
   listCoursesValidators,
+  removeStudentValidators,
   updateCourseValidators,
 } from '../validators/courses.validators';
 
@@ -44,4 +48,19 @@ coursesRouter.get(
   '/:id/enrolled',
   validate(courseIdParamValidators),
   asyncHandler(checkEnrollment),
+);
+coursesRouter.get(
+  '/:id/students',
+  validate(courseIdParamValidators),
+  asyncHandler(getCourseStudents),
+);
+coursesRouter.get(
+  '/:id/enrollments',
+  validate(courseIdParamValidators),
+  asyncHandler(getCourseEnrollments),
+);
+coursesRouter.delete(
+  '/:id/students/:userId',
+  validate(removeStudentValidators),
+  asyncHandler(removeStudentFromCourse),
 );

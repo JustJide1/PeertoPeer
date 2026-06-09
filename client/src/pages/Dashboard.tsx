@@ -10,6 +10,7 @@ import {
   type ActivityItem,
   type EnrollmentWithStats,
 } from '../lib/dashboardApi';
+import { fetchCourses, type Course } from '../lib/coursesApi';
 
 const FEED_LIMIT = 10;
 const ACTIVITY_FETCH_LIMIT = 50;
@@ -21,11 +22,7 @@ const LEVEL_LABELS: Record<string, string> = {
   L400: '400 Level',
 };
 
-const QUICK_ACTIONS = [
-  { label: 'Browse Courses', description: 'Discover and enroll in courses', to: '/courses' },
-  { label: 'Upload Resource', description: 'Share notes and materials', to: '/courses' },
-  { label: 'Start Discussion', description: 'Ask a question in a forum', to: '/courses' },
-];
+
 
 function lastPostActivityFor(courseId: string, activity: ActivityItem[]): string | null {
   const match = activity.find((item) => item.type === 'post' && item.forum?.courseId === courseId);
@@ -72,7 +69,11 @@ function CourseCard({
   return (
     <article className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
       <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">{course.code}</p>
-      <h3 className="mt-1 truncate text-base font-semibold text-blue-950">{course.title}</h3>
+      <h3 className="mt-1">
+        <Link to={`/courses/${course.id}`} className="block truncate text-base font-semibold text-blue-950 hover:underline">
+          {course.title}
+        </Link>
+      </h3>
       <p className="mt-1 text-xs text-gray-500">Lecturer: {course.lecturer.name}</p>
 
       <dl className="mt-4 flex items-end justify-between">
@@ -96,6 +97,29 @@ function CourseCard({
         </div>
       </dl>
     </article>
+  );
+}
+
+function LecturerCourseCard({ course }: { course: Course }) {
+  return (
+    <Link
+      to={`/courses/${course.id}`}
+      className="block rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+    >
+      <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">{course.code}</p>
+      <h3 className="mt-1 truncate text-base font-semibold text-blue-950">{course.title}</h3>
+
+      <dl className="mt-4 flex items-end justify-between">
+        <div>
+          <dt className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Students</dt>
+          <dd className="mt-0.5 text-xs font-semibold text-gray-700">{course._count.enrollments}</dd>
+        </div>
+        <div className="text-right">
+          <dt className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Resources</dt>
+          <dd className="mt-0.5 text-xs font-semibold text-gray-700">{course._count.resources}</dd>
+        </div>
+      </dl>
+    </Link>
   );
 }
 
@@ -136,7 +160,123 @@ function ActivityRow({ item }: { item: ActivityItem }) {
   );
 }
 
-export default function Dashboard() {
+function LecturerDashboard() {
+  const { user } = useAuth();
+  const [taughtCourses, setTaughtCourses] = useState<Course[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setError(null);
+
+    fetchCourses()
+      .then((all) => {
+        if (cancelled) return;
+        setTaughtCourses(all.filter((c) => c.lecturerId === user!.id));
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(getErrorMessage(err, 'Could not load your dashboard.'));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const isLoading = taughtCourses === null;
+
+  const firstCourseId = taughtCourses?.[0]?.id;
+
+  const lecturerActions = [
+    {
+      label: 'Create New Forum',
+      description: 'Start a discussion forum for a course',
+      to: firstCourseId ? `/courses/${firstCourseId}?tab=forums` : '/courses',
+    },
+    {
+      label: 'Upload Resource',
+      description: 'Add materials to a course',
+      to: firstCourseId ? `/courses/${firstCourseId}` : '/courses',
+    },
+    {
+      label: 'View My Students',
+      description: 'See who is enrolled in your courses',
+      to: firstCourseId ? `/courses/${firstCourseId}?tab=students` : '/courses',
+    },
+  ];
+
+  const stats = {
+    coursesTaught: taughtCourses?.length ?? 0,
+    totalStudents: taughtCourses?.reduce((sum, c) => sum + c._count.enrollments, 0) ?? 0,
+    resourcesUploaded: taughtCourses?.reduce((sum, c) => sum + c._count.resources, 0) ?? 0,
+  };
+
+  return (
+    <section className="mx-auto max-w-5xl px-4 py-8">
+      <h1 className="text-2xl font-bold text-blue-950">
+        Welcome back{user?.name ? `, ${user.name}` : ''}
+      </h1>
+      <p className="mt-1 text-sm text-gray-600">
+        Here&apos;s an overview of your courses.
+      </p>
+
+      {error && (
+        <p className="mt-6 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+          {error}
+        </p>
+      )}
+
+      {/* Stats row */}
+      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <StatCard label="Courses Taught" value={stats.coursesTaught} isLoading={isLoading} />
+        <StatCard label="Total Students" value={stats.totalStudents} isLoading={isLoading} />
+        <StatCard label="Resources Uploaded" value={stats.resourcesUploaded} isLoading={isLoading} />
+      </div>
+
+      {/* My Courses */}
+      <div className="mt-10">
+        <h2 className="text-lg font-semibold text-blue-950">My Courses</h2>
+
+        {isLoading ? (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <CourseCardSkeleton key={index} />
+            ))}
+          </div>
+        ) : taughtCourses.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-500">
+            You haven&apos;t created any courses yet.
+          </p>
+        ) : (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {taughtCourses.map((course) => (
+              <LecturerCourseCard key={course.id} course={course} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="mt-10">
+        <h2 className="text-lg font-semibold text-blue-950">Quick Actions</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {lecturerActions.map((action) => (
+            <Link
+              key={action.label}
+              to={action.to}
+              className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-colors hover:border-blue-900 hover:bg-blue-900/5"
+            >
+              <p className="text-sm font-semibold text-blue-950">{action.label}</p>
+              <p className="mt-1 text-xs text-gray-500">{action.description}</p>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StudentDashboard() {
   const { user } = useAuth();
   const location = useLocation();
 
@@ -181,6 +321,26 @@ export default function Dashboard() {
   };
 
   const recentActivity = activity?.slice(0, FEED_LIMIT) ?? [];
+
+  const firstCourseId = enrollments?.[0]?.course.id;
+
+  const studentActions = [
+    {
+      label: 'Browse Courses',
+      description: 'Discover and enroll in courses',
+      to: '/courses',
+    },
+    {
+      label: 'Upload Resource',
+      description: 'Share notes and materials',
+      to: firstCourseId ? `/courses/${firstCourseId}?tab=resources` : '/courses',
+    },
+    {
+      label: 'Start Discussion',
+      description: 'Ask a question in a forum',
+      to: firstCourseId ? `/courses/${firstCourseId}?tab=forums` : '/courses',
+    },
+  ];
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-8">
@@ -270,7 +430,7 @@ export default function Dashboard() {
       <div className="mt-10">
         <h2 className="text-lg font-semibold text-blue-950">Quick Actions</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          {QUICK_ACTIONS.map((action) => (
+          {studentActions.map((action) => (
             <Link
               key={action.label}
               to={action.to}
@@ -284,4 +444,10 @@ export default function Dashboard() {
       </div>
     </section>
   );
+}
+
+export default function Dashboard() {
+  const { user } = useAuth();
+  if (user?.role === 'LECTURER') return <LecturerDashboard />;
+  return <StudentDashboard />;
 }

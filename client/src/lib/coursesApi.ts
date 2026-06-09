@@ -60,6 +60,13 @@ interface ListEnvelope<T> {
   meta: ListMeta;
 }
 
+export interface CourseStudent {
+  id: string;
+  name: string;
+  email: string;
+  level: string | null;
+}
+
 export async function fetchCourses(): Promise<Course[]> {
   const { data } = await httpClient.get<ListEnvelope<Course[]>>('/courses', {
     params: { limit: 100 },
@@ -121,6 +128,15 @@ export async function uploadResource(
     },
   });
   return data.data;
+}
+
+export async function fetchCourseStudents(courseId: string): Promise<CourseStudent[]> {
+  const { data } = await httpClient.get<ApiEnvelope<CourseStudent[]>>(`/courses/${courseId}/enrollments`);
+  return data.data;
+}
+
+export async function removeStudentFromCourse(courseId: string, userId: string): Promise<void> {
+  await httpClient.delete(`/courses/${courseId}/students/${userId}`);
 }
 
 export async function deleteResource(resourceId: string): Promise<void> {

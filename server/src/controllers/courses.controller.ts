@@ -149,3 +149,61 @@ export async function checkEnrollment(req: Request, res: Response): Promise<void
 
   res.json({ data: { enrolled: enrollment !== null } });
 }
+
+export async function removeStudentFromCourse(req: Request, res: Response): Promise<void> {
+  const { id: courseId, userId } = req.params;
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) throw new HttpError(404, `Course ${courseId} not found`);
+
+  if (req.user!.role !== Role.LECTURER || course.lecturerId !== req.user!.sub) {
+    throw new HttpError(403, 'Only the course lecturer can remove students');
+  }
+
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { userId_courseId: { userId, courseId } },
+  });
+  if (!enrollment) throw new HttpError(404, 'This student is not enrolled in the course');
+
+  await prisma.enrollment.delete({
+    where: { userId_courseId: { userId, courseId } },
+  });
+
+  res.status(204).send();
+}
+
+export async function getCourseStudents(req: Request, res: Response): Promise<void> {
+  const courseId = req.params.id;
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) throw new HttpError(404, `Course ${courseId} not found`);
+
+  if (req.user!.role !== Role.LECTURER || course.lecturerId !== req.user!.sub) {
+    throw new HttpError(403, 'Only the course lecturer can view enrolled students');
+  }
+
+  const enrollments = await prisma.enrollment.findMany({
+    where: { courseId },
+    include: { user: { select: { id: true, name: true, email: true, level: true } } },
+  });
+
+  res.json({ data: enrollments.map((e) => e.user) });
+}
+
+export async function getCourseEnrollments(req: Request, res: Response): Promise<void> {
+  const courseId = req.params.id;
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) throw new HttpError(404, `Course ${courseId} not found`);
+
+  if (req.user!.role !== Role.LECTURER || course.lecturerId !== req.user!.sub) {
+    throw new HttpError(403, 'Only the course lecturer can view enrollments');
+  }
+
+  const enrollments = await prisma.enrollment.findMany({
+    where: { courseId },
+    include: { user: { select: { id: true, name: true, email: true, level: true } } },
+  });
+
+  res.json({ data: enrollments.map((e) => e.user) });
+}

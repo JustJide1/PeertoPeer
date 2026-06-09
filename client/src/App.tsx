@@ -3,6 +3,7 @@ import { BreadcrumbProvider } from './context/BreadcrumbContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import RoleGuard from './components/RoleGuard';
 import AppLayout from './layouts/AppLayout';
+import LecturerLoginPage from './pages/auth/LecturerLoginPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import CourseDetailPage from './pages/CourseDetailPage';
@@ -29,6 +30,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/lecturer/login" element={<LecturerLoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
       <Route element={<AuthenticatedLayout />}>
