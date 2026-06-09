@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   BookOpen,
-  GraduationCap,
   Mail,
   Menu,
   MessageSquare,
@@ -12,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import Logo from '../components/Logo';
 
 const NAV_LINKS = [
   { id: 'features', label: 'Features' },
@@ -171,7 +171,7 @@ function Navbar() {
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-3">
-          <GraduationCap className="text-blue-900" size={34} />
+          <Logo size={34} />
           <div>
             <h1 className="text-lg font-bold text-blue-900">Bowen P2P Learning</h1>
             <p className="text-xs text-gray-500">Computer Science Department</p>

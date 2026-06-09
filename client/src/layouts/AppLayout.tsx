@@ -14,6 +14,7 @@ import {
 import { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Avatar from '../components/Avatar';
+import Logo from '../components/Logo';
 import { useAuth } from '../context/AuthContext';
 import { useBreadcrumbTrail, type BreadcrumbCrumb } from '../context/BreadcrumbContext';
 
@@ -166,7 +167,7 @@ export default function AppLayout() {
         }`}
       >
         <div className="flex items-center gap-2 border-b border-gray-200 px-4 py-4">
-          <GraduationCap className="flex-none text-blue-900" size={28} />
+          <Logo size={28} className="flex-none" />
           {!isCollapsed && <span className="truncate text-lg font-bold text-blue-900">Bowen P2P</span>}
         </div>
 
@@ -195,7 +196,7 @@ export default function AppLayout() {
           <aside className="relative flex h-full w-72 max-w-[85%] flex-col bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4">
               <div className="flex items-center gap-2">
-                <GraduationCap className="text-blue-900" size={26} />
+                <Logo size={26} />
                 <span className="text-lg font-bold text-blue-900">Bowen P2P</span>
               </div>
               <button
@@ -228,7 +229,7 @@ export default function AppLayout() {
           </button>
 
           <Link to="/dashboard" className="flex items-center gap-2">
-            <GraduationCap className="text-blue-900" size={22} />
+            <Logo size={22} />
             <span className="font-bold text-blue-900">Bowen P2P</span>
           </Link>
 
